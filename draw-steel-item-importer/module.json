@@ -1,0 +1,29 @@
+{
+  "id": "draw-steel-item-importer",
+  "title": "Draw Steel Item Importer",
+  "description": "Adds a UI-based importer for Draw Steel item creation via text input.",
+  "version": "1.0.0",
+  "author": "Ivan & Copilot",
+  "compatibility": {
+    "minimum": "11",
+    "verified": "13"
+  },
+  "systems": ["draw-steel"],
+  "esmodules": [
+    "scripts/item-importer.js"
+  ],
+  "styles": [
+    "styles/importer.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "packs": [],
+  "url": "https://your-host-url.com",
+  "manifest": "https://your-host-url.com/module.json",
+  "download": "https://your-host-url.com/module.zip"
+}

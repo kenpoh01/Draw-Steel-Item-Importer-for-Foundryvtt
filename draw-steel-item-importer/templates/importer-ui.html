@@ -1,0 +1,28 @@
+<form class="item-importer flexcol">
+  <h2>Import Draw Steel Item</h2>
+  <p>Paste the raw item text below and select its type and destination folder.</p>
+
+  <div class="form-group">
+    <label for="item-type">Item Type</label>
+    <select id="item-type" name="item-type">
+      {{#each itemTypes}}
+        <option value="{{this}}">{{this}}</option>
+      {{/each}}
+    </select>
+    <span id="type-warning" style="margin-left: 10px; color: #a00;"></span>
+  </div>
+
+  <div class="form-group">
+    <label for="folder-name">Folder Name</label>
+    <input type="text" id="folder-name" name="folder-name" placeholder="Optional: Create or use folder" />
+  </div>
+
+  <div class="form-group">
+    <label for="item-text">Raw Text</label>
+    <textarea id="item-text" rows="12" placeholder="Paste ability block here..."></textarea>
+  </div>
+
+  <button type="button" class="import-button" id="import-button">
+    <i class="fas fa-plus"></i> Create Item
+  </button>
+</form>

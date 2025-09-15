@@ -1,0 +1,35 @@
+{
+  "draw-steel-item-importer": {
+    "app": {
+      "title": "Draw Steel Item Importer",
+      "importButton": "Import Items",
+      "itemTypeLabel": "Item Type",
+      "itemTextLabel": "Item Text",
+      "folderNameLabel": "Folder Name",
+      "typeWarning": "(not yet implemented)",
+      "notification": {
+        "missingInput": "Please select an item type and paste item text.",
+        "folderError": "Unable to create folder.",
+        "parseError": "Failed to parse item text.",
+        "createError": "Error creating item.",
+        "createSuccess": "Created item: {name}",
+        "typeNotImplemented": "{type} is not yet implemented."
+      }
+    },
+    "itemTypes": {
+      "ability": "Ability",
+      "malice": "Malice",
+      "feature": "Feature",
+      "equipment": "Equipment",
+      "power": "Power"
+    },
+    "keywords": {
+      "area": "Area",
+      "magic": "Magic",
+      "ranged": "Ranged",
+      "main": "Main Action",
+      "maneuver": "Maneuver",
+      "strike": "Strike"
+    }
+  }
+}
