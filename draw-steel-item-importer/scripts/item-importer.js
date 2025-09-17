@@ -1,8 +1,8 @@
-import { parseMultipleAbilities } from "./parsers/abilityParser.js";
+import { parseMultipleAbilities, preprocessRawAbilities } from "./parsers/abilityParser.js";
 
 export class ItemImporterApp extends Application {
   static get defaultOptions() {
-    return mergeObject(super.defaultOptions, {
+    return foundry.utils.mergeObject(super.defaultOptions, {
       id: "item-importer",
       title: "Draw Steel Item Importer",
       template: "modules/draw-steel-item-importer/templates/importer-ui.html",
@@ -71,24 +71,25 @@ export class ItemImporterApp extends Application {
         }
       }
 
-      if (type === "ability") {
-        const parsedItems = parseMultipleAbilities(rawText);
+     if (type === "ability") {
+  const structuredItems = preprocessRawAbilities(rawText);
+  const parsedItems = parseMultipleAbilities(structuredItems);
 
-        for (const parsed of parsedItems) {
-          if (!parsed || !parsed.name) continue;
-          parsed.folder = folderId;
+  for (const parsed of parsedItems) {
+    if (!parsed || !parsed.name) continue;
+    parsed.folder = folderId;
 
-          try {
-            await CONFIG.Item.documentClass.createDocuments([parsed]);
-            ui.notifications.info(`Created ability: ${parsed.name}`);
-          } catch (err) {
-            console.error("Item creation failed:", err);
-            ui.notifications.error(`Error creating item: ${parsed.name}`);
-          }
-        }
+    try {
+      await CONFIG.Item.documentClass.createDocuments([parsed]);
+      ui.notifications.info(`Created ability: ${parsed.name}`);
+    } catch (err) {
+      console.error("Item creation failed:", err);
+      ui.notifications.error(`Error creating item: ${parsed.name}`);
+    }
+  }
 
-        this.close();
-      } else {
+  this.close();
+} else {
         ui.notifications.warn(`${type} is not yet implemented.`);
       }
     });

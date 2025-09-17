@@ -24,6 +24,30 @@ export function parseKeywordLine(line) {
 }
 
 /**
+ * Extracts and normalizes keywords from a header string.
+ * Used by abilityParser.js to populate system.keywords.
+ * @param {string} header
+ * @returns {string[]} - Array of lowercase keywords
+ */
+export function normalizeKeywords(header = "") {
+  return header
+    .split(/[,;]/)
+    .map(k => k.trim().toLowerCase())
+    .filter(k =>
+      k.length > 0 &&
+      !k.includes("main action") &&
+      !k.includes("maneuver") &&
+      !k.includes("reaction") &&
+      !k.includes("triggered")
+    );
+}
+
+export const VALID_DAMAGE_TYPES = [
+  "acid", "cold", "corruption", "fire", "holy",
+  "lightning", "poison", "psychic", "sonic", ""
+];
+
+/**
  * Heuristically determines whether a line is likely a keyword/action line.
  * Prevents misclassification of narrative lines like "They can..." as keywords.
  */
@@ -34,27 +58,14 @@ export function isLikelyKeywordLine(line) {
 }
 
 export function isNarrativeLine(line) {
-  if (!line || line.length < 2) {
-    return false;
-  }
+  if (!line || line.length < 2) return false;
 
   const trimmed = line.trim();
 
-  if (/^[123áéí]\s+\d+/.test(trimmed)) {
-    return false;
-  }
-
-  if (/^[A-Z][a-z]+(,\s*[A-Z][a-z]+)*\s+(Main|Triggered|Reaction|Maneuver) action$/i.test(trimmed)) {
-    return false;
-  }
-
-  if (/^Effect:/i.test(trimmed)) {
-    return false;
-  }
-
-  if (/[.,!?;:"'()]/.test(trimmed)) {
-    return true;
-  }
+  if (/^[123áéí]\s+\d+/.test(trimmed)) return false;
+  if (/^[A-Z][a-z]+(,\s*[A-Z][a-z]+)*\s+(Main|Triggered|Reaction|Maneuver) action$/i.test(trimmed)) return false;
+  if (/^Effect:/i.test(trimmed)) return false;
+  if (/[.,!?;:"'()]/.test(trimmed)) return true;
 
   return false;
 }

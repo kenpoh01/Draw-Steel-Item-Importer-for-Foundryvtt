@@ -1,191 +1,195 @@
-import { parseKeywordLine, isLikelyKeywordLine } from "./keywordParser.js";
-import { parseTarget, mapCharacteristic } from "./tierParser.js";
+import { parseTierBlock } from "./tierParser.js";
+import { parseEffectBlock } from "./effectParser.js";
+import { resolveIcon } from "./iconResolver.js";
+import { normalizeKeywords } from "./keywordParser.js";
+import { parseDistanceAndTarget } from "./distanceParser.js";
 
 /**
- * Parses a single ability block into a structured Foundry item object.
+ * Generates a slug-style ID from an ability name.
+ * Example: "Blessing of Fate and Destiny" → "blessing-of-fate-and-destiny"
+ * @param {string} name
+ * @returns {string}
  */
-export function parseAbilityCore(rawText = "") {
-  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-
-  const result = {
-    name: "",
-    type: "ability",
-    img: "",
-    system: {
-      source: {
-        book: "Heroes",
-        page: "", // ✅ Page left blank
-        license: "Draw Steel Creator License",
-        revision: 1
-      },
-      _dsid: "",
-      story: "",
-      keywords: [],
-      type: "main",
-      category: "",
-      resource: 0,
-      trigger: "",
-      distance: {},
-      damageDisplay: "melee",
-      target: { type: "enemy", value: null },
-      power: {
-        roll: { formula: "@chr", characteristics: [] },
-        effects: {}
-      },
-      effect: { before: "", after: "" },
-      spend: { text: "", value: null }
-    },
-    effects: [],
-    flags: {},
-    ownership: { default: 0 }
-  };
-
-  let lineIndex = 0;
-
-  const headerMatch = lines[lineIndex]?.match(/^(.+?)\s*\((\d+)\s+(\w+)\)$/);
-  if (headerMatch) {
-    result.name = headerMatch[1].trim();
-    result.system.resource = Number(headerMatch[2]);
-    result.system.category = headerMatch[3].toLowerCase();
-    result.system._dsid = result.name.toLowerCase().replace(/\s+/g, "-");
-    lineIndex++;
-  }
-
-  const keywordIndex = lines.findIndex((line, i) => i > lineIndex && isLikelyKeywordLine(line));
-  const storyLines = lines.slice(lineIndex, keywordIndex);
-  result.system.story = storyLines.join(" ").trim();
-
-  const keywordData = parseKeywordLine(lines[keywordIndex] ?? "");
-  result.system.type = keywordData.type;
-  result.system.keywords = keywordData.keywords.map(k => k.toLowerCase());
-
-  const rangeLine = lines[keywordIndex + 1] ?? "";
-  const rangeMatch = rangeLine.match(/e\s+(\d+)\s+(\w+)(?:\s+within\s+(\d+))?\s+x\s+(.+)/i);
-  if (rangeMatch) {
-    result.system.distance = {
-      type: rangeMatch[2].toLowerCase(),
-      primary: Number(rangeMatch[1]),
-      ...(rangeMatch[3] && { secondary: Number(rangeMatch[3]) })
-    };
-    result.system.target = parseTarget(rangeMatch[4]);
-  }
-
-  const rollLine = lines[keywordIndex + 2] ?? "";
-  const rollMatch = rollLine.match(/Power Roll\s*\+?\s*(\w+)/i);
-  const rollStat = rollMatch?.[1]?.toLowerCase() ?? "intuition";
-  result.system.power.roll.formula = "@chr";
-  result.system.power.roll.characteristics = [rollStat];
-
-  const potencyMap = {
-    "á": "@potency.weak",
-    "é": "@potency.average",
-    "í": "@potency.strong"
-  };
-
-  const damageEffectId = foundry.utils.randomID();
-  const conditionEffectId = foundry.utils.randomID();
-
-  const damageEffect = {
-    name: "",
-    img: null,
-    type: "damage",
-    _id: damageEffectId,
-    damage: {}
-  };
-
-  const conditionEffect = {
-    name: "frightened",
-    img: null,
-    type: "applied",
-    _id: conditionEffectId,
-    applied: {}
-  };
-
-  const tierLines = lines.filter(line => /^[áéí]/.test(line));
-  for (const line of tierLines) {
-    const tier = line[0];
-    const tierKey = tier === "á" ? "tier1" : tier === "é" ? "tier2" : "tier3";
-    const content = line.slice(1).trim();
-
-    const [damagePart, conditionPartRaw] = content.split(";");
-    const damageMatch = damagePart?.match(/(\d+)\s+(\w+)/);
-    const damageValue = damageMatch?.[1];
-    const damageType = damageMatch?.[2];
-
-    if (damageValue && damageType) {
-      damageEffect.damage[tierKey] = {
-        value: damageValue,
-        types: [damageType],
-        properties: []
-      };
-    }
-
-    if (conditionPartRaw?.toLowerCase().includes("frightened")) {
-      conditionEffect.applied[tierKey] = {
-        display: tier === "á" ? "{{potency}}, frightened (save ends)" : "",
-        potency: {
-          value: potencyMap[tier],
-          characteristic: tier === "á" ? rollStat : ""
-        },
-        effects: {
-          frightened: {
-            condition: "failure",
-            end: "save",
-            properties: []
-          }
-        }
-      };
-    }
-  }
-
-  const hasDamage = Object.values(damageEffect.damage).some(tier => tier?.types?.[0]);
-  if (hasDamage) {
-    result.system.power.effects[damageEffectId] = damageEffect;
-  }
-
-  const hasCondition = Object.keys(conditionEffect.applied).length > 0;
-  if (hasCondition) {
-    result.system.power.effects[conditionEffectId] = conditionEffect;
-  }
-
-  const effectIndex = lines.findIndex(line => /^Effect:/i.test(line));
-  if (effectIndex !== -1) {
-    const effectLines = lines.slice(effectIndex);
-    const effectText = effectLines.map(l => l.replace(/^Effect:\s*/i, "")).join(" ").trim();
-    result.system.effect.after = `<p>${effectText}</p>`;
-  }
-
-  return result;
+function generateDSID(name) {
+  return name
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
 /**
- * Splits and parses multiple abilities from a single raw input block.
+ * Parses a raw ability object into Draw Steel schema format.
+ * @param {object} raw - Raw ability input (text or preprocessed object)
+ * @returns {object} - Parsed ability schema
  */
-export function parseMultipleAbilities(rawText = "") {
+export function parseAbility(raw) {
+  const {
+    name,
+    resource,
+    story,
+    header,
+    tierLines,
+    effectBefore,
+    effectAfter
+  } = raw;
+
+  if (!name || !header) return null;
+
+  const keywords = normalizeKeywords(header);
+
+ const result = parseDistanceAndTarget(raw.distanceLine ?? header);
+if (!result) {
+  console.warn("⚠️ Failed to parse distance/target from:", raw.distanceLine ?? header);
+}
+
+  const distance = result?.distance ?? { type: "special" };
+  const target = result?.target ?? { type: "special", value: null };
+
+console.log(`📦 Tier lines for "${name}":`, tierLines);
+
+  const tierInput = tierLines.length > 0 ? tierLines : [raw.effectBefore].filter(Boolean);
+const tiers = parseTierBlock(tierInput);
+
+
+  const icon = resolveIcon({
+    system: {
+      story,
+      keywords,
+      power: { effects: tiers },
+      distance
+    }
+  });
+  const effect = parseEffectBlock(effectBefore, effectAfter);
+
+  return {
+    name,
+    type: "ability",
+    img: icon,
+    system: {
+      _dsid: generateDSID(name),
+      story,
+      keywords,
+      type: "main",
+      category: "heroic",
+      resource,
+      distance,
+      target,
+      power: {
+        roll: {
+          formula: "@chr",
+          characteristics: []
+        },
+        effects: tiers
+      },
+      effect,
+      trigger: "",
+      damageDisplay: "melee",
+      spend: {
+        text: "",
+        value: null
+      }
+    },
+    effects: [],
+    flags: {}
+  };
+}
+
+/**
+ * Parses an array of raw ability objects into Draw Steel schema format.
+ * Accepts either an array or a single object.
+ * @param {object[]|object} rawAbilities
+ * @returns {object[]} - Array of parsed ability schemas
+ */
+export function parseMultipleAbilities(rawAbilities) {
+  const input = Array.isArray(rawAbilities)
+    ? rawAbilities
+    : typeof rawAbilities === "object" && rawAbilities !== null
+      ? [rawAbilities]
+      : [];
+
+  return input.map(parseAbility).filter(Boolean);
+}
+
+/**
+ * Converts raw multiline ability text into structured ability objects.
+ * @param {string} rawText
+ * @returns {object[]} - Array of parsed ability blocks
+ */
+export function preprocessRawAbilities(rawText = "") {
   const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const blocks = [];
-  let currentBlock = [];
+  const abilities = [];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const isHeader = /^(.+?)\s*\((\d+)\s+\w+\)$/.test(line);
+  let current = {
+    name: "",
+    resource: 0,
+    story: "",
+    header: "",
+    tierLines: [],
+    effectBefore: "",
+    effectAfter: ""
+  };
 
-    if (isHeader && currentBlock.length > 0) {
-      blocks.push(currentBlock);
-      currentBlock = [];
+  let mode = "name";
+
+  for (const line of lines) {
+    if (/^\w.*\(\d+\s+piety\)/i.test(line)) {
+      if (current.name) abilities.push({ ...current });
+      current = {
+        name: line.replace(/\(\d+\s+piety\)/i, "").trim(),
+        resource: parseInt(line.match(/\d+/)?.[0] ?? "0", 10),
+        story: "",
+        header: "",
+        tierLines: [],
+        effectBefore: "",
+        effectAfter: ""
+      };
+      mode = "story";
     }
 
-    currentBlock.push(line);
+    // ✅ Refined header detection
+    else if (/\b(main action|maneuver|triggered|free triggered)\s*$/i.test(line)) {
+      current.header = line.trim();
+    }
+
+    else if (/^power roll\s*\+\s*/i.test(line)) {
+      mode = "tier";
+    }
+
+    else if (/^effect:/i.test(line)) {
+      mode = "effect";
+      current.effectBefore += line.replace(/^effect:\s*/i, "") + " ";
+    }
+
+    else if (/^[áéí]/.test(line)) {
+  mode = "tier";
+  current.tierLines.push(line);
+}
+else if (mode === "tier") {
+  // Append continuation lines to the last tier line
+  const lastIndex = current.tierLines.length - 1;
+  if (lastIndex >= 0) {
+    current.tierLines[lastIndex] += " " + line;
+  }
+}
+
+    else if (/^e\s/i.test(line)) {
+      current.distanceLine = line.trim(); // optional future use
+    }
+
+    else {
+      if (mode === "story") current.story += line + " ";
+      else if (mode === "tier") current.tierLines.push(line);
+      else if (mode === "effect") current.effectBefore += line + " ";
+    }
   }
 
-  if (currentBlock.length > 0) {
-    blocks.push(currentBlock);
-  }
+  if (current.name) abilities.push({ ...current });
 
-  const abilities = blocks.map(blockLines => {
-    const blockText = blockLines.join("\n");
-    return parseAbilityCore(blockText);
-  });
-
-  return abilities;
+  return abilities.map(a => ({
+    ...a,
+    story: a.story.trim(),
+    effectBefore: a.effectBefore.trim(),
+    effectAfter: a.effectAfter.trim()
+  }));
 }

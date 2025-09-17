@@ -1,105 +1,112 @@
-// tierParser.js
-import { parseDamage } from "./damageParser.js";
-import { parseCondition } from "./conditionParser.js";
-import { parseMovement } from "./movementParser.js";
+import { classifyBlock } from "./blockClassifier.js";
+import { getTierKey, potencyMap } from "./tierUtils.js";
+import { formatBulletedBlock, formatNarrativeHTML } from "./formatters.js";
+import { parseTierDamage } from "./tierDamageParser.js";
+import { parseTierOther } from "./tierNarrativeParser.js";
 
-export function parseTierText(text = "") {
-  const result = {
-    value: 0,
-    types: [],
-    movement: null,
-    condition: null,
-    potency: null,
-    narrative: ""
-  };
+export function parseTierBlock(lines = []) {
+  console.log("🧩 Parsing tier block:", lines);
 
-  const original = text;
+  // 🔧 Preprocess multi-line Effect blocks into a single line
+  if (lines.some(line => line.trim().toLowerCase().startsWith("effect:"))) {
+  const effectLines = lines.filter(line =>
+    line.trim().toLowerCase().startsWith("effect:") || line.trim().startsWith("¥")
+  );
+  const joinedEffect = effectLines.join(" ");
+  lines = [joinedEffect];
 
+  console.log("🧪 Joined effect block:", joinedEffect);
+}
 
-  // 🔥 Damage
-  const damage = parseDamage(text);
-  if (damage) {
-    result.value = damage.value;
-    result.types = damage.types;
-    text = text.replace(/(\d+)\s*\w*\s*damage/i, "");
-  }
+  const blockType = classifyBlock(lines);
+  const effects = {};
 
-  // 🌀 Movement
-  const movement = parseMovement(text);
-  if (movement) {
-    result.movement = {
-      name: movement.name,
-      type: "forced",
-      distance: movement.distance,
-      img: null
+  if (blockType === "tiered") {
+    const damageEffect = {
+      _id: foundry.utils.randomID(),
+      name: "",
+      img: null,
+      type: "damage",
+      damage: {}
     };
-    text = text.replace(/\b(slide|pull|push|shift)\s*\d+/i, "");
-  }
 
-  // ⚠️ Condition
-  const condition = parseCondition(text);
-  if (condition) {
-    result.condition = condition.condition;
-    result.potency = condition.potency;
-    result.narrative = condition.narrative;
-  } else {
-    const leftover = text.replace(/[\.;]/g, "").trim();
-    if (leftover.length > 0) {
-      result.narrative = leftover;
+    const otherEffect = {
+      _id: foundry.utils.randomID(),
+      name: "",
+      img: null,
+      type: "other",
+      other: {}
+    };
+
+    for (const line of lines) {
+      const symbol = line[0];
+      const tierKey = getTierKey(symbol);
+      if (!tierKey) continue;
+
+      const [damagePartRaw, narrativePartRaw] = line.split(";").map(s => s.trim());
+
+      const damage = parseTierDamage(damagePartRaw, symbol);
+      const potencyCode = narrativePartRaw?.match(/p<([wvs])/i)?.[1]?.toLowerCase();
+      const potencyValue = potencyMap[potencyCode] ?? "@potency.average";
+      const narrativeText = narrativePartRaw?.replace(/p<[wvs],?\s*/i, "").trim();
+
+      const other = {
+        display: `<p>{{Potency}}, ${narrativeText}</p>`,
+        potency: {
+          value: potencyValue,
+          characteristic: "presence"
+        }
+      };
+
+      if (damage && damage.value && damage.types.length > 0) {
+        damageEffect.damage[tierKey] = damage;
+      }
+
+      if (other && narrativeText) {
+        otherEffect.other[tierKey] = other;
+      }
+    }
+
+    if (Object.keys(damageEffect.damage).length > 0) {
+      effects[damageEffect._id] = damageEffect;
+    }
+
+    if (Object.keys(otherEffect.other).length > 0) {
+      effects[otherEffect._id] = otherEffect;
     }
   }
 
+  else if (blockType === "bulleted" || blockType === "narrative") {
+    const raw = lines.join(" ").replace(/^Effect:\s*/i, "").trim();
+    console.log("📜 Raw narrative detected:", raw);
 
-  return result;
-}
+    const formatted = blockType === "bulleted"
+      ? formatBulletedBlock(raw, false)
+      : formatNarrativeHTML(raw);
 
-export function parseTarget(targetText) {
-  if (!targetText || typeof targetText !== "string") return { type: "special", value: null };
+    const effect = {
+      _id: foundry.utils.randomID(),
+      name: "",
+      img: null,
+      type: "other",
+      other: {
+        tier1: {
+          display: formatted,
+          potency: {
+            value: "@potency.average",
+            characteristic: "presence"
+          }
+        }
+      }
+    };
 
-
-  const numberWords = {
-    one: 1, two: 2, three: 3, four: 4, five: 5,
-    six: 6, seven: 7, eight: 8, nine: 9, ten: 10
-  };
-
-  const lower = targetText.toLowerCase();
-  let value = null;
-
-  for (const [word, num] of Object.entries(numberWords)) {
-    if (lower.includes(word)) {
-
-      value = num;
-      break;
-    }
+    effects[effect._id] = effect;
   }
 
-  if (lower.includes("all") || lower.includes("each") || lower.includes("every")) {
-
-    value = null;
+  else {
+    console.warn("⚠️ Unrecognized block type:", lines);
   }
 
-  let type = "special";
-
-  if (lower.includes("creatures or objects")) type = "creatureObject";
-  else if (lower.includes("creature")) type = "creature";
-  else if (lower.includes("object")) type = "object";
-  else if (lower.includes("enemy")) type = "enemy";
-  else if (lower.includes("ally")) type = "ally";
-  else if (lower.includes("self or ally")) type = "selfOrAlly";
-  else if (lower.includes("self or creature")) type = "selfOrCreature";
-  else if (lower.includes("self ally")) type = "selfAlly";
-  else if (lower.includes("self")) type = "self";
-
-  return { type, value };
-}
-
-export function mapCharacteristic(letter) {
-  const map = {
-    m: "might",
-    a: "agility",
-    r: "reason",
-    i: "intuition",
-    p: "presence"
-  };
-  return map[letter?.toLowerCase()] || "none";
+  console.log("✅ Parsed effects:", effects);
+  return effects;
 }
