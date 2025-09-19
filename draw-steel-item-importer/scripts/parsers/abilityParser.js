@@ -1,15 +1,10 @@
 import { parseTierBlock } from "./tierParser.js";
 import { parseEffectBlock } from "./effectParser.js";
 import { resolveIcon } from "./iconResolver.js";
-import { normalizeKeywords } from "./keywordParser.js";
+import { normalizeKeywords, normalizeResourceType } from "./keywordParser.js";
 import { parseDistanceAndTarget } from "./distanceParser.js";
 
-/**
- * Generates a slug-style ID from an ability name.
- * Example: "Blessing of Fate and Destiny" → "blessing-of-fate-and-destiny"
- * @param {string} name
- * @returns {string}
- */
+/** Generates a slug-style ID from an ability name. */
 function generateDSID(name) {
   return name
     .toLowerCase()
@@ -18,11 +13,21 @@ function generateDSID(name) {
     .replace(/\s+/g, "-");
 }
 
-/**
- * Parses a raw ability object into Draw Steel schema format.
- * @param {object} raw - Raw ability input (text or preprocessed object)
- * @returns {object} - Parsed ability schema
- */
+/** Extracts stat from "Power Roll + [Stat]" line */
+function extractPowerRollStat(line = "") {
+  const match = line.match(/Power Roll\s*\+\s*(Might|Agility|Reason|Intuition|Presence)/i);
+  return match ? match[1].toLowerCase() : null;
+}
+
+/** Checks if effects contain tiered structure */
+function hasTieredEffects(effects = {}) {
+  return Object.values(effects).some(eff =>
+    eff.damage && Object.keys(eff.damage).length > 0 ||
+    eff.other && ["tier1", "tier2", "tier3"].some(k => k in eff.other)
+  );
+}
+
+/** Parses a raw ability object into Draw Steel schema format */
 export function parseAbility(raw) {
   const {
     name,
@@ -31,27 +36,31 @@ export function parseAbility(raw) {
     header,
     tierLines,
     effectBefore,
-    effectAfter
+    effectAfter,
+    powerRollLine
   } = raw;
 
   if (!name || !header) return null;
 
-  const keywords = normalizeKeywords(header);
+  const { keywords, type } = normalizeKeywords(header);
+  const result = parseDistanceAndTarget(raw.distanceLine ?? header);
 
- const result = parseDistanceAndTarget(raw.distanceLine ?? header);
-if (!result) {
-  console.warn("⚠️ Failed to parse distance/target from:", raw.distanceLine ?? header);
-}
+  if (!result) {
+    console.warn("⚠️ Failed to parse distance/target from:", raw.distanceLine ?? header);
+  }
 
   const distance = result?.distance ?? { type: "special" };
   const target = result?.target ?? { type: "special", value: null };
 
-console.log(`📦 Tier lines for "${name}":`, tierLines);
+  console.log(`📦 Tier lines for "${name}":`, tierLines);
 
-  const tierInput = tierLines.length > 0 ? tierLines : [raw.effectBefore].filter(Boolean);
-const tiers = parseTierBlock(tierInput);
+  const tierInput = tierLines.length > 0
+    ? tierLines
+    : effectBefore
+      ? [`Effect: ${effectBefore}`]
+      : [];
 
-
+  const tiers = parseTierBlock(tierInput);
   const icon = resolveIcon({
     system: {
       story,
@@ -60,7 +69,10 @@ const tiers = parseTierBlock(tierInput);
       distance
     }
   });
+
   const effect = parseEffectBlock(effectBefore, effectAfter);
+  const stat = extractPowerRollStat(powerRollLine ?? "");
+  const characteristic = stat ? [stat] : [];
 
   return {
     name,
@@ -70,7 +82,7 @@ const tiers = parseTierBlock(tierInput);
       _dsid: generateDSID(name),
       story,
       keywords,
-      type: "main",
+      type,
       category: "heroic",
       resource,
       distance,
@@ -78,9 +90,9 @@ const tiers = parseTierBlock(tierInput);
       power: {
         roll: {
           formula: "@chr",
-          characteristics: []
+          characteristics: characteristic
         },
-        effects: tiers
+        effects: hasTieredEffects(tiers) ? tiers : {}
       },
       effect,
       trigger: "",
@@ -95,12 +107,7 @@ const tiers = parseTierBlock(tierInput);
   };
 }
 
-/**
- * Parses an array of raw ability objects into Draw Steel schema format.
- * Accepts either an array or a single object.
- * @param {object[]|object} rawAbilities
- * @returns {object[]} - Array of parsed ability schemas
- */
+/** Parses an array of raw ability objects into Draw Steel schema format */
 export function parseMultipleAbilities(rawAbilities) {
   const input = Array.isArray(rawAbilities)
     ? rawAbilities
@@ -111,48 +118,55 @@ export function parseMultipleAbilities(rawAbilities) {
   return input.map(parseAbility).filter(Boolean);
 }
 
-/**
- * Converts raw multiline ability text into structured ability objects.
- * @param {string} rawText
- * @returns {object[]} - Array of parsed ability blocks
- */
+/** Converts raw multiline ability text into structured ability objects */
 export function preprocessRawAbilities(rawText = "") {
   const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const abilities = [];
 
   let current = {
     name: "",
-    resource: 0,
+    resource: { value: 0, type: "unknown" },
     story: "",
     header: "",
     tierLines: [],
     effectBefore: "",
-    effectAfter: ""
+    effectAfter: "",
+    powerRollLine: ""
   };
 
   let mode = "name";
 
   for (const line of lines) {
-    if (/^\w.*\(\d+\s+piety\)/i.test(line)) {
+    const resourceMatch = line.match(/\((\d+)\s+(\w+)\)/i);
+    const rawType = resourceMatch?.[2] ?? "";
+    const normalizedType = normalizeResourceType(rawType);
+
+    if (/^\w.*\(\d+\s+\w+\)/i.test(line)) {
       if (current.name) abilities.push({ ...current });
+
       current = {
-        name: line.replace(/\(\d+\s+piety\)/i, "").trim(),
-        resource: parseInt(line.match(/\d+/)?.[0] ?? "0", 10),
+        name: line.replace(/\(\d+\s+\w+\)/i, "").trim(),
+        resource: {
+          value: parseInt(resourceMatch?.[1] ?? "0", 10),
+          type: normalizedType ?? "unknown"
+        },
         story: "",
         header: "",
         tierLines: [],
         effectBefore: "",
-        effectAfter: ""
+        effectAfter: "",
+        powerRollLine: ""
       };
+
       mode = "story";
     }
 
-    // ✅ Refined header detection
-    else if (/\b(main action|maneuver|triggered|free triggered)\s*$/i.test(line)) {
+    else if (/\b(main action|maneuver|triggered|free triggered|free maneuver|no action|villain)\s*$/i.test(line)) {
       current.header = line.trim();
     }
 
     else if (/^power roll\s*\+\s*/i.test(line)) {
+      current.powerRollLine = line.trim();
       mode = "tier";
     }
 
@@ -162,19 +176,19 @@ export function preprocessRawAbilities(rawText = "") {
     }
 
     else if (/^[áéí]/.test(line)) {
-  mode = "tier";
-  current.tierLines.push(line);
-}
-else if (mode === "tier") {
-  // Append continuation lines to the last tier line
-  const lastIndex = current.tierLines.length - 1;
-  if (lastIndex >= 0) {
-    current.tierLines[lastIndex] += " " + line;
-  }
-}
+      mode = "tier";
+      current.tierLines.push(line);
+    }
+
+    else if (mode === "tier") {
+      const lastIndex = current.tierLines.length - 1;
+      if (lastIndex >= 0) {
+        current.tierLines[lastIndex] += " " + line;
+      }
+    }
 
     else if (/^e\s/i.test(line)) {
-      current.distanceLine = line.trim(); // optional future use
+      current.distanceLine = line.trim();
     }
 
     else {
@@ -190,6 +204,7 @@ else if (mode === "tier") {
     ...a,
     story: a.story.trim(),
     effectBefore: a.effectBefore.trim(),
-    effectAfter: a.effectAfter.trim()
+    effectAfter: a.effectAfter.trim(),
+    powerRollLine: a.powerRollLine?.trim() ?? ""
   }));
 }

@@ -1,4 +1,5 @@
 import { parseTarget } from "./targetParser.js";
+
 /**
  * Parses a distance/target line like "e Ranged 10 x One creature"
  * Returns structured distance and target objects.
@@ -20,9 +21,20 @@ export function parseDistanceLine(line = "") {
   let distance = {};
   const target = parseTarget(targetPart);
 
+  // ✅ Match "15 wall within 10"
+  const wallMatch = distancePart.match(/^(\d+)\s+wall\s+within\s+(\d+)$/i);
+  if (wallMatch) {
+    const [, primary, secondary] = wallMatch;
+    distance = {
+      type: "wall",
+      primary: parseInt(primary),
+      secondary: parseInt(secondary)
+    };
+  }
+
   // ✅ Match "10 × 1 line within 1"
-  const lineMatch = distancePart.match(/(\d+)\s*[×x]\s*(\d+)\s+(\w+)\s+within\s+(\d+)/i);
-  if (lineMatch) {
+  else if (/(\d+)\s*[×x]\s*(\d+)\s+(\w+)\s+within\s+(\d+)/i.test(distancePart)) {
+    const lineMatch = distancePart.match(/(\d+)\s*[×x]\s*(\d+)\s+(\w+)\s+within\s+(\d+)/i);
     const [, primary, secondary, shape, range] = lineMatch;
     distance = {
       type: shape.toLowerCase(),
