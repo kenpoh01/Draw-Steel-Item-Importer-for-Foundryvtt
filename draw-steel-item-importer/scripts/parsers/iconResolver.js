@@ -21,7 +21,8 @@ export function resolveIcon(ability = {}) {
     aura: "aura",
     burst: "burst",
     cone: "movement",
-    line: "beam"
+    line: "beam",
+    shadow: "unholy" 
   };
 
   // 🔹 Priority 1: Damage type-based matching
@@ -41,20 +42,25 @@ export function resolveIcon(ability = {}) {
 
   // 🔹 Priority 2: Keyword-based matching
   const content = [
+    ability.name ?? "",
     ability.system?.story ?? "",
     ability.system?.effect?.after ?? "",
     ...(ability.system?.keywords ?? [])
   ].join(" ").toLowerCase();
 
-  for (const [rawKeyword, filenames] of Object.entries(iconMap)) {
-    const keyword = keywordAliases[rawKeyword] ?? rawKeyword;
-    if (content.includes(keyword)) {
-      const chosen = filenames[Math.floor(Math.random() * filenames.length)];
-      return `icons/${chosen}`;
-    }
-  }
 
-  // 🔹 Priority 3: Distance type matching
+  // 🔹 Priority 3: Fuzzy matching of ability names
+  const tokens = content.split(/\W+/); // split by non-word characters
+
+for (const [rawKeyword, filenames] of Object.entries(iconMap)) {
+  const keyword = keywordAliases[rawKeyword] ?? rawKeyword;
+  if (tokens.some(t => t.includes(keyword))) { 
+    const chosen = filenames[Math.floor(Math.random() * filenames.length)];
+    return `icons/${chosen}`;
+  }
+}
+
+  // 🔹 Priority 4: Distance type matching
   const distanceType = ability.system?.distance?.type?.toLowerCase();
   const normalizedDistance = keywordAliases[distanceType] ?? distanceType;
 

@@ -1,4 +1,4 @@
-/**
+/** 
  * Parses a keyword/action line from a Malice ability block.
  * Extracts known action types and filters out keywords.
  */
@@ -13,8 +13,6 @@ export function normalizeResourceType(raw = "") {
   return HEROIC_RESOURCE_TYPES.includes(lower) ? lower : null;
 }
 
-
-
 export const SUPPORTED_CONDITIONS = [
   "bleeding", "dazed", "grabbed", "frightened", "prone",
   "restrained", "slowed", "taunted", "weakened", "banished"
@@ -25,9 +23,8 @@ export function detectConditions(text = "") {
   return SUPPORTED_CONDITIONS.filter(cond => normalized.includes(cond));
 }
 
-
 export function parseKeywordLine(line) {
-  let type = "special";
+  let type = "none";
   const keywords = [];
 
   // Split on comma OR space followed by capital letter
@@ -43,6 +40,7 @@ export function parseKeywordLine(line) {
     else if (lowered.includes("triggered")) type = "triggered";
     else if (lowered.includes("no action")) type = "none";
     else if (lowered.includes("villain")) type = "villain";
+    else if (lowered.includes("move")) type = "none"; // ✅ Explicitly treat "move" as no action
     else keywords.push(token);
   }
 
@@ -63,12 +61,13 @@ export function normalizeKeywords(header = "") {
     "triggered": "triggered",
     "free triggered": "freeTriggered",
     "no action": "none",
-    "villain": "villain"
+    "villain": "villain",
+    "move": "none" // ✅ Explicitly treat "move" as no action
   };
 
   const lower = header.toLowerCase().trim();
   const typeEntry = Object.entries(types).find(([suffix]) => lower.endsWith(suffix));
-  const type = typeEntry ? typeEntry[1] : "main";
+  const type = typeEntry ? typeEntry[1] : "none"; // ✅ Default to "none" if no match
 
   const keywordPart = typeEntry ? header.slice(0, -typeEntry[0].length).trim() : header;
   const keywords = keywordPart
@@ -92,7 +91,7 @@ export const VALID_DAMAGE_TYPES = [
 export function isLikelyKeywordLine(line) {
   const tokens = line.split(/(?:,\s*|\s+)(?=[A-Z])/).map(t => t.trim());
   const capitalized = tokens.filter(t => /^[A-Z]/.test(t));
-  return capitalized.length >= 2 || /main action|maneuver|triggered|free maneuver|free triggered|no action|villain/i.test(line);
+  return capitalized.length >= 2 || /main action|maneuver|triggered|free maneuver|free triggered|no action|villain|move/i.test(line);
 }
 
 export function isNarrativeLine(line) {

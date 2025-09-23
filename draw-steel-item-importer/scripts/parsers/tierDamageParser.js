@@ -17,9 +17,9 @@ export function parseTierDamage(raw = "", symbol = "") {
 
   const cleaned = raw.trim();
 
-  if (/^\d+\s+\w+\s+damage$/i.test(cleaned)) {
-    return parseSimpleDamage(cleaned);
-  }
+  if (/^\d+\s+[a-z]+\s+damage$/i.test(cleaned)) {
+  return parseSimpleDamage(cleaned);
+}
 
   if (/^\d+\s*\+\s*[marip][a-z]+\s+damage$/i.test(cleaned)) {
     return parseStatTypeDamage(cleaned);

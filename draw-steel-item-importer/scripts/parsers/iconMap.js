@@ -244,14 +244,19 @@ export const iconMap = {
 
   // 🔊 Sonic & Sound
   sonic: [
-    "magic/sound/bell-alarm-red-purple.webp",
-    "magic/sound/explosion-impact-shock-wave.webp"
+    "magic/sonic/bell-alarm-red-purple.webp",
+	"magic/sonic/projectile-sound-rings-wave.webp",
+    "magic/sonic/explosion-shock-sound-wave.webp",
+	"magic/sonic/scream-wail-shout-teal.webp"
   ],
 
   // 🧠 Psychic & Mind
   psychic: [
-    "magic/mind/eye-glow-purple.webp",
-    "magic/mind/mind-spiral-glow-blue.webp"
+    "magic/control/hypnosis-mesmerism-eye-tan.webp",
+"magic/control/hypnosis-mesmerism-eye.webp",
+"magic/control/hypnosis-mesmerism-pendulum.webp",
+"magic/control/hypnosis-mesmerism-swirl.webp",
+"magic/control/hypnosis-mesmerism-watch.webp"
   ],
 
   // ✨ Holy & Light
@@ -303,5 +308,26 @@ export const iconMap = {
 "magic/fire/projectile-arrow-fire-purple.webp",
 "magic/fire/projectile-arrow-fire-red-yellow.webp",
 "magic/fire/projectile-arrow-fire-yellow-orange.webp"
-  ]
+  ],
+  
+  //Unholy
+  unholy: [
+  "magic/unholy/hand-claw-fire-blue.webp",
+"magic/unholy/hand-claw-fire-green.webp",
+"magic/unholy/hand-claw-fog-green.webp",
+"magic/unholy/hand-claw-glow-orange.webp",
+"magic/unholy/hand-fire-skeleton-pink.webp",
+"magic/unholy/hand-grasping-green.webp",
+"magic/unholy/hand-light-green.webp",
+"magic/unholy/hand-light-pink.webp",
+"magic/unholy/hand-marked-pink.webp",
+"magic/unholy/hand-weapon-glow-black-green.webp",
+"magic/unholy/hands-circle-light-green.webp",
+"magic/unholy/hands-cloud-light-pink.webp",
+"magic/unholy/hands-praying-fire-green.webp",
+"magic/unholy/orb-beam-pink.webp",
+"magic/unholy/orb-colllecting-energy-green.webp",
+"magic/unholy/orb-contained-pink.webp"
+]
+
 };

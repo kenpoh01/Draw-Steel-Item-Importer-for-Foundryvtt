@@ -15,7 +15,6 @@ export function parseTierBlock(lines = []) {
     );
     const joinedEffect = effectLines.join(" ");
     lines = [joinedEffect];
-    console.log("🧪 Joined effect block:", joinedEffect);
   }
 
   const blockType = classifyBlock(lines);
@@ -38,18 +37,14 @@ export function parseTierBlock(lines = []) {
       other: {}
     };
 
-    const conditionEffects = {}; // Track one applied effect per condition
+    const conditionEffects = {};
 
     for (const line of lines) {
       console.log(`🔍 Processing tier line: "${line}"`);
 
       const symbol = line[0];
       const tierKey = getTierKey(symbol);
-      console.log(`🔑 Tier symbol "${symbol}" → key "${tierKey}"`);
-      if (!tierKey) {
-        console.warn(`⚠️ Unknown tier symbol: "${symbol}"`);
-        continue;
-      }
+      if (!tierKey) continue;
 
       const damageOnly = line.indexOf(";") === -1;
       const damagePartRaw = damageOnly ? line : line.split(";")[0].trim();
@@ -61,6 +56,7 @@ export function parseTierBlock(lines = []) {
       const cleanedDamagePart = damagePartRaw.replace(/^[áéí]\s*/, "").trim();
       console.log(`🧪 Cleaned damage part: "${cleanedDamagePart}"`);
 
+      // ✅ Fix: Accept flat damage values like "24 sonic damage"
       const damage = parseTierDamage(cleanedDamagePart, symbol);
       console.log("💥 Parsed damage:", damage);
 
@@ -69,9 +65,11 @@ export function parseTierBlock(lines = []) {
         console.log(`✅ Assigned to damageEffect.damage["${tierKey}"]`);
       }
 
-      // 🔍 Detect and build applied condition effects
-      const conditions = detectConditions(narrativePartRaw);
-      for (const condition of conditions) {
+      // 🧠 Parse potency + condition together
+      const parsedNarrative = parseTierOther(narrativePartRaw ?? "");
+      const condition = parsedNarrative?.display?.match(/\b(dazed|restrained|banished|stunned|blinded|silenced|confused|bleeding|grabbed|frightened|prone|slowed|taunted|weakened)\b/i)?.[0]?.toLowerCase();
+
+      if (condition) {
         if (!conditionEffects[condition]) {
           conditionEffects[condition] = {
             name: condition,
@@ -83,11 +81,8 @@ export function parseTierBlock(lines = []) {
         }
 
         conditionEffects[condition].applied[tierKey] = {
-          display: `{{potency}}, ${condition} (save ends)`,
-          potency: {
-            value: potencyMap[symbol] ?? "@potency.average",
-            characteristic: damage?.characteristic ?? ""
-          },
+          display: parsedNarrative.display,
+          potency: parsedNarrative.potency,
           effects: {
             [condition]: {
               condition: "failure",
@@ -96,18 +91,10 @@ export function parseTierBlock(lines = []) {
             }
           }
         };
-      }
 
-      // 🧼 Strip condition phrases from narrative before parsing otherEffect
-      let cleanedNarrative = narrativePartRaw;
-      for (const condition of conditions) {
-        const regex = new RegExp(`\\b${condition}\\b.*?(\\)|$)`, "gi");
-        cleanedNarrative = cleanedNarrative?.replace(regex, "").trim();
-      }
-
-      const other = parseTierOther(cleanedNarrative);
-      if (other) {
-        otherEffect.other[tierKey] = other;
+        console.log(`🧬 Assigned to applied effect for "${condition}"`);
+      } else if (parsedNarrative) {
+        otherEffect.other[tierKey] = parsedNarrative;
         console.log(`📝 Assigned to otherEffect.other["${tierKey}"]`);
       }
     }
@@ -129,8 +116,15 @@ export function parseTierBlock(lines = []) {
   }
 
   else if (blockType === "bulleted" || blockType === "narrative") {
-    const raw = lines.join(" ").replace(/^Effect:\s*/i, "").trim();
+    let raw = lines.join(" ").replace(/^Effect:\s*/i, "").trim();
     console.log("📜 Raw narrative detected:", raw);
+
+    // ✅ Fix: Format "Strained:" with <strong> and newline
+    if (/^strained:/i.test(raw)) {
+      raw = `\n<strong>Strained:</strong> ${raw.replace(/^strained:\s*/i, "").trim()}`;
+    } else if (/strained:/i.test(raw)) {
+      raw = raw.replace(/(strained:)/i, "\n<strong>Strained:</strong>");
+    }
 
     const formatted = blockType === "bulleted"
       ? formatBulletedBlock(raw, false)

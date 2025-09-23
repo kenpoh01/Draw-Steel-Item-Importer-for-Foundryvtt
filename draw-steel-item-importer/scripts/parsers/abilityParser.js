@@ -27,7 +27,6 @@ function hasTieredEffects(effects = {}) {
   );
 }
 
-/** Parses a raw ability object into Draw Steel schema format */
 export function parseAbility(raw) {
   const {
     name,
@@ -40,7 +39,10 @@ export function parseAbility(raw) {
     powerRollLine
   } = raw;
 
-  if (!name || !header) return null;
+  if (!name || !header) {
+    console.warn("⚠️ Skipping ability due to missing name or header:", name);
+    return null;
+  }
 
   const { keywords, type } = normalizeKeywords(header);
   const result = parseDistanceAndTarget(raw.distanceLine ?? header);
@@ -70,9 +72,22 @@ export function parseAbility(raw) {
     }
   });
 
-  const effect = parseEffectBlock(effectBefore, effectAfter);
   const stat = extractPowerRollStat(powerRollLine ?? "");
   const characteristic = stat ? [stat] : [];
+
+  const resourceValue = resource?.value ?? 0;
+  const resourceType = resource?.type ?? "unknown";
+
+  // ✅ Format "Strained:" clause in effectAfter
+ let formattedAfter = effectAfter?.trim() ?? "";
+
+if (/^strained:/i.test(formattedAfter)) {
+  formattedAfter = `\n<strong>Strained:</strong> ${formattedAfter.replace(/^strained:\s*/i, "").trim()}`;
+} else if (/strained:/i.test(formattedAfter)) {
+  formattedAfter = formattedAfter.replace(/(strained:)/i, "\n<strong>Strained:</strong>");
+}
+
+  const effect = parseEffectBlock(effectBefore, formattedAfter);
 
   return {
     name,
@@ -84,7 +99,8 @@ export function parseAbility(raw) {
       keywords,
       type,
       category: "heroic",
-      resource,
+      resource: resourceValue,
+      resourceType,
       distance,
       target,
       power: {
@@ -96,11 +112,7 @@ export function parseAbility(raw) {
       },
       effect,
       trigger: "",
-      damageDisplay: "melee",
-      spend: {
-        text: "",
-        value: null
-      }
+      damageDisplay: "melee"
     },
     effects: [],
     flags: {}
@@ -131,7 +143,8 @@ export function preprocessRawAbilities(rawText = "") {
     tierLines: [],
     effectBefore: "",
     effectAfter: "",
-    powerRollLine: ""
+    powerRollLine: "",
+    distanceLine: ""
   };
 
   let mode = "name";
@@ -155,13 +168,14 @@ export function preprocessRawAbilities(rawText = "") {
         tierLines: [],
         effectBefore: "",
         effectAfter: "",
-        powerRollLine: ""
+        powerRollLine: "",
+        distanceLine: ""
       };
 
       mode = "story";
     }
 
-    else if (/\b(main action|maneuver|triggered|free triggered|free maneuver|no action|villain)\s*$/i.test(line)) {
+    else if (/\b(main action|maneuver|triggered|free triggered|free maneuver|no action|villain|move)\s*$/i.test(line)) {
       current.header = line.trim();
     }
 
@@ -170,10 +184,27 @@ export function preprocessRawAbilities(rawText = "") {
       mode = "tier";
     }
 
-    else if (/^effect:/i.test(line)) {
-      mode = "effect";
-      current.effectBefore += line.replace(/^effect:\s*/i, "") + " ";
-    }
+ else if (/^(effect:|special:)/i.test(line)) {
+  const cleaned = line.replace(/^(effect:|special:)\s*/i, "").trim();
+  mode = "effect";
+
+  if (current.tierLines.length > 0) {
+    current.effectAfter += cleaned + " ";
+  } else {
+    current.effectBefore += cleaned + " ";
+  }
+}
+
+// ✅ Detect and route "Strained:" lines explicitly
+else if (/^strained:/i.test(line)) {
+  const formatted = "<br><strong>Strained:</strong> " + line.replace(/^strained:\s*/i, "").trim();
+  if (current.tierLines.length > 0) {
+    current.effectAfter += formatted + " ";
+  } else {
+    current.effectBefore += formatted + " ";
+  }
+  mode = "effect";
+}
 
     else if (/^[áéí]/.test(line)) {
       mode = "tier";
@@ -192,9 +223,17 @@ export function preprocessRawAbilities(rawText = "") {
     }
 
     else {
-      if (mode === "story") current.story += line + " ";
-      else if (mode === "tier") current.tierLines.push(line);
-      else if (mode === "effect") current.effectBefore += line + " ";
+      if (mode === "story") {
+        current.story += line + " ";
+      } else if (mode === "tier") {
+        current.tierLines.push(line);
+      } else if (mode === "effect") {
+        if (current.tierLines.length > 0) {
+          current.effectAfter += line + " ";
+        } else {
+          current.effectBefore += line + " ";
+        }
+      }
     }
   }
 
@@ -205,6 +244,7 @@ export function preprocessRawAbilities(rawText = "") {
     story: a.story.trim(),
     effectBefore: a.effectBefore.trim(),
     effectAfter: a.effectAfter.trim(),
-    powerRollLine: a.powerRollLine?.trim() ?? ""
+    powerRollLine: a.powerRollLine?.trim() ?? "",
+    distanceLine: a.distanceLine?.trim() ?? ""
   }));
 }
