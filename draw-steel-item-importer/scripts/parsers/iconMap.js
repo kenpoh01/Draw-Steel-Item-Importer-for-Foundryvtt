@@ -217,10 +217,10 @@ export const iconMap = {
 
   // 🛡 Defense & Shielding
   shield: [
-    "magic/defensive/shield-barrier-blue.webp",
-    "magic/defensive/shield-glow-gold.webp",
-    "magic/defensive/shield-barrier-flaming-diamond-blue.webp",
-    "magic/defensive/barrier-shield-dome-blue-purple.webp"
+    "magic/defensive/shield-barrier-blades-teal.webp",
+"magic/defensive/shield-barrier-blue.webp",
+"magic/defensive/shield-barrier-deflect-gold.webp",
+"magic/defensive/shield-barrier-deflect-teal.webp"
   ],
 
   // 🌀 Movement & Teleportation

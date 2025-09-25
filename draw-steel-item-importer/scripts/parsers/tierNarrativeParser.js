@@ -34,7 +34,7 @@ export function parseTierOther(raw = "") {
   // If condition is present, return applied effect block
   if (condition) {
     return {
-      display: `{{potency}}, ${condition} (save ends)`,
+      display: match ? `{{Potency}}, ${condition} (save ends)` : `${condition} (save ends)`,
       potency: {
         value: potencyValue,
         characteristic
@@ -44,7 +44,7 @@ export function parseTierOther(raw = "") {
 
   // Otherwise return generic other effect block
   return {
-    display: `{{Potency}}, ${cleaned}`,
+    display: match ? `{{Potency}}, ${cleaned}` : cleaned,
     potency: {
       value: potencyValue,
       characteristic

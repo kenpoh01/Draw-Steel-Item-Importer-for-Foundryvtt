@@ -62,7 +62,7 @@ export function parseAbility(raw) {
       ? [`Effect: ${effectBefore}`]
       : [];
 
-  const tiers = parseTierBlock(tierInput);
+  const { effects: tiers, effectAfter: extractedEffectAfter } = parseTierBlock(tierInput);
   const icon = resolveIcon({
     system: {
       story,
@@ -79,13 +79,9 @@ export function parseAbility(raw) {
   const resourceType = resource?.type ?? "unknown";
 
   // ✅ Format "Strained:" clause in effectAfter
- let formattedAfter = effectAfter?.trim() ?? "";
-
-if (/^strained:/i.test(formattedAfter)) {
-  formattedAfter = `\n<strong>Strained:</strong> ${formattedAfter.replace(/^strained:\s*/i, "").trim()}`;
-} else if (/strained:/i.test(formattedAfter)) {
-  formattedAfter = formattedAfter.replace(/(strained:)/i, "\n<strong>Strained:</strong>");
-}
+ let formattedAfter = [effectAfter?.trim(), extractedEffectAfter?.trim()]
+  .filter(Boolean)
+  .join(" ");
 
   const effect = parseEffectBlock(effectBefore, formattedAfter);
 
@@ -154,15 +150,25 @@ export function preprocessRawAbilities(rawText = "") {
     const rawType = resourceMatch?.[2] ?? "";
     const normalizedType = normalizeResourceType(rawType);
 
-    if (/^\w.*\(\d+\s+\w+\)/i.test(line)) {
-      if (current.name) abilities.push({ ...current });
+    const isAbilityStart = /^[A-Z][a-zA-Z\s'-]{2,40}(\(\d+\s+\w+\))?$/.test(line.trim());
+	const isHeaderLike = /^(main action|maneuver|triggered|effect|move:|power roll)/i.test(line.trim());
+
+
+if (isAbilityStart && !isHeaderLike) {
+
+     if (current.name) abilities.push({ ...current });
 
       current = {
         name: line.replace(/\(\d+\s+\w+\)/i, "").trim(),
-        resource: {
-          value: parseInt(resourceMatch?.[1] ?? "0", 10),
-          type: normalizedType ?? "unknown"
-        },
+        resource: /^\w.*\(\d+\s+\w+\)/.test(line)
+			? {
+				value: parseInt(resourceMatch?.[1] ?? "0", 10),
+				type: normalizedType ?? "unknown"
+				}
+			: {
+				value: 0,
+				type: "none"
+				},
         story: "",
         header: "",
         tierLines: [],

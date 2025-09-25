@@ -19,6 +19,13 @@ export function parseTierBlock(lines = []) {
 
   const blockType = classifyBlock(lines);
   const effects = {};
+  let effectAfter = ""; // ✅ Top-level effect.after output
+
+  const clauseMap = {
+    strained: "Strained",
+    persistent: "Persistent"
+    // Add more here as needed: aura, passive, field, etc.
+  };
 
   if (blockType === "tiered") {
     const damageEffect = {
@@ -39,64 +46,103 @@ export function parseTierBlock(lines = []) {
 
     const conditionEffects = {};
 
-    for (const line of lines) {
+   // 🧾 Clause extractor
+const extractClause = (text) => {
+  for (const key in clauseMap) {
+    const label = clauseMap[key];
+    const regex = new RegExp(`\\b${key}\\s*\\d*:\\s*.*$`, "i");
+    const match = text.match(regex);
+    if (match) {
+      const cleanedText = match[0].replace(/^.*?:\s*/, "").trim();
+      if (cleanedText) {
+        effectAfter += `<strong>${match[0].split(":")[0]}:</strong> ${cleanedText}`;
+        console.log(`🧾 Routed "${label}" clause to system.effect.after`);
+      }
+      return text.replace(regex, "").trim(); // ✅ return cleaned damage string
+    }
+  }
+  return text; // ✅ fallback if no clause matched
+};
+
+    const tierLines = lines.filter(line => /^[áéí]/.test(line.trim()));
+    const extraLines = lines.filter(line => !/^[áéí]/.test(line.trim()));
+
+    for (const line of tierLines) {
       console.log(`🔍 Processing tier line: "${line}"`);
 
       const symbol = line[0];
       const tierKey = getTierKey(symbol);
       if (!tierKey) continue;
 
-      const damageOnly = line.indexOf(";") === -1;
-      const damagePartRaw = damageOnly ? line : line.split(";")[0].trim();
-      const narrativePartRaw = damageOnly ? null : line.split(";")[1]?.trim();
+      const hasSemicolon = line.includes(";");
+      let damagePartRaw = null;
+      let narrativePartRaw = null;
 
-      console.log(`🧪 Damage part: "${damagePartRaw}"`);
-      if (narrativePartRaw) console.log(`🧾 Narrative part: "${narrativePartRaw}"`);
+      const cleanedLine = line.replace(/^[áéí]\s*/, "").trim();
 
-      const cleanedDamagePart = damagePartRaw.replace(/^[áéí]\s*/, "").trim();
-      console.log(`🧪 Cleaned damage part: "${cleanedDamagePart}"`);
-
-      // ✅ Fix: Accept flat damage values like "24 sonic damage"
-      const damage = parseTierDamage(cleanedDamagePart, symbol);
-      console.log("💥 Parsed damage:", damage);
-
-      if (damage && damage.value) {
-        damageEffect.damage[tierKey] = damage;
-        console.log(`✅ Assigned to damageEffect.damage["${tierKey}"]`);
+      if (hasSemicolon) {
+        damagePartRaw = cleanedLine.split(";")[0].trim();
+        narrativePartRaw = cleanedLine.split(";")[1]?.trim();
+      } else {
+        damagePartRaw = cleanedLine;
       }
 
-      // 🧠 Parse potency + condition together
-      const parsedNarrative = parseTierOther(narrativePartRaw ?? "");
-      const condition = parsedNarrative?.display?.match(/\b(dazed|restrained|banished|stunned|blinded|silenced|confused|bleeding|grabbed|frightened|prone|slowed|taunted|weakened)\b/i)?.[0]?.toLowerCase();
+      // 🧹 Extract clause from damage line
+      damagePartRaw = extractClause(damagePartRaw);
 
-      if (condition) {
-        if (!conditionEffects[condition]) {
-          conditionEffects[condition] = {
-            name: condition,
-            img: null,
-            type: "applied",
-            _id: foundry.utils.randomID(),
-            applied: {}
-          };
+      if (damagePartRaw) {
+        console.log(`🧪 Damage part: "${damagePartRaw}"`);
+        const cleanedDamagePart = damagePartRaw.trim();
+        console.log(`🧪 Cleaned damage part: "${cleanedDamagePart}"`);
+
+        const damage = parseTierDamage(cleanedDamagePart, symbol);
+        console.log("💥 Parsed damage:", damage);
+
+        if (damage && damage.value) {
+          damageEffect.damage[tierKey] = damage;
+          console.log(`✅ Assigned to damageEffect.damage["${tierKey}"]`);
         }
-
-        conditionEffects[condition].applied[tierKey] = {
-          display: parsedNarrative.display,
-          potency: parsedNarrative.potency,
-          effects: {
-            [condition]: {
-              condition: "failure",
-              end: "save",
-              properties: []
-            }
-          }
-        };
-
-        console.log(`🧬 Assigned to applied effect for "${condition}"`);
-      } else if (parsedNarrative) {
-        otherEffect.other[tierKey] = parsedNarrative;
-        console.log(`📝 Assigned to otherEffect.other["${tierKey}"]`);
       }
+
+      if (narrativePartRaw) {
+        console.log(`🧾 Narrative part: "${narrativePartRaw}"`);
+        const parsedNarrative = parseTierOther(narrativePartRaw);
+        const condition = parsedNarrative?.display?.match(/\b(dazed|restrained|banished|stunned|blinded|silenced|confused|bleeding|grabbed|frightened|prone|slowed|taunted|weakened)\b/i)?.[0]?.toLowerCase();
+
+        if (condition) {
+          if (!conditionEffects[condition]) {
+            conditionEffects[condition] = {
+              name: condition,
+              img: null,
+              type: "applied",
+              _id: foundry.utils.randomID(),
+              applied: {}
+            };
+          }
+
+          conditionEffects[condition].applied[tierKey] = {
+            display: parsedNarrative.display,
+            potency: parsedNarrative.potency,
+            effects: {
+              [condition]: {
+                condition: "failure",
+                end: "save",
+                properties: []
+              }
+            }
+          };
+
+          console.log(`🧬 Assigned to applied effect for "${condition}"`);
+        } else if (parsedNarrative?.display?.trim()) {
+          otherEffect.other[tierKey] = parsedNarrative;
+          console.log(`📝 Assigned to otherEffect.other["${tierKey}"]`);
+        }
+      }
+    }
+
+    // 🧾 Handle post-tier clause lines
+    for (const line of extraLines) {
+      extractClause(line);
     }
 
     if (Object.keys(damageEffect.damage).length > 0) {
@@ -104,7 +150,10 @@ export function parseTierBlock(lines = []) {
       console.log("📦 Final damageEffect:", damageEffect);
     }
 
-    if (Object.keys(otherEffect.other).length > 0) {
+    if (
+      Object.keys(otherEffect.other).length > 0 ||
+      (otherEffect.effect && (otherEffect.effect.before || otherEffect.effect.after))
+    ) {
       effects[otherEffect._id] = otherEffect;
       console.log("📦 Final otherEffect:", otherEffect);
     }
@@ -113,17 +162,26 @@ export function parseTierBlock(lines = []) {
       effects[effect._id] = effect;
       console.log(`🧬 Final applied effect for "${effect.name}":`, effect);
     }
+
+    return {
+      effects,
+      effectAfter: effectAfter.trim()
+    };
   }
 
   else if (blockType === "bulleted" || blockType === "narrative") {
     let raw = lines.join(" ").replace(/^Effect:\s*/i, "").trim();
     console.log("📜 Raw narrative detected:", raw);
 
-    // ✅ Fix: Format "Strained:" with <strong> and newline
-    if (/^strained:/i.test(raw)) {
-      raw = `\n<strong>Strained:</strong> ${raw.replace(/^strained:\s*/i, "").trim()}`;
-    } else if (/strained:/i.test(raw)) {
-      raw = raw.replace(/(strained:)/i, "\n<strong>Strained:</strong>");
+    for (const key in clauseMap) {
+      const label = clauseMap[key];
+      const regex = new RegExp(`^${key}\\s*\\d*:\\s*`, "i");
+
+      if (regex.test(raw)) {
+        raw = `<br><strong>${label}:</strong> ${raw.replace(regex, "").trim()}`;
+      } else if (new RegExp(`${key}:`, "i").test(raw)) {
+        raw = raw.replace(new RegExp(`(${key}:)`, "i"), `<br><strong>${label}:</strong>`);
+      }
     }
 
     const formatted = blockType === "bulleted"
@@ -150,12 +208,18 @@ export function parseTierBlock(lines = []) {
     };
 
     effects[effect._id] = effect;
+
+    return {
+      effects,
+      effectAfter: ""
+    };
   }
 
   else {
     console.warn("⚠️ Unrecognized block type:", lines);
+return {
+  effects,
+  effectAfter: effectAfter.trim()
+};
   }
-
-  console.log("✅ Parsed effects:", effects);
-  return effects;
 }
