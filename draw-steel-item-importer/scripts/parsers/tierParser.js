@@ -81,11 +81,12 @@ const extractClause = (text) => {
       const cleanedLine = line.replace(/^[áéí]\s*/, "").trim();
 
       if (hasSemicolon) {
-        damagePartRaw = cleanedLine.split(";")[0].trim();
-        narrativePartRaw = cleanedLine.split(";")[1]?.trim();
-      } else {
-        damagePartRaw = cleanedLine;
-      }
+		damagePartRaw = cleanedLine.split(";")[0].trim();
+		narrativePartRaw = cleanedLine.split(";")[1]?.trim();
+	  } else {
+		damagePartRaw = cleanedLine;
+		narrativePartRaw = cleanedLine; // ✅ fallback for narrative-only tiers
+	  }
 
       // 🧹 Extract clause from damage line
       damagePartRaw = extractClause(damagePartRaw);

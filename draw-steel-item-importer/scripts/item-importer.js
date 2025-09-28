@@ -1,4 +1,12 @@
-import { parseMultipleAbilities, preprocessRawAbilities } from "./parsers/abilityParser.js";
+import {
+  parseMultipleAbilities,  preprocessRawAbilities, 
+  } from "./parsers/abilityParser.js";
+  
+import {
+  preprocessStartingAbilities
+} from "./parsers/startingAbilityParser.js";
+
+  
 
 export class ItemImporterApp extends Application {
   static get defaultOptions() {
@@ -16,7 +24,8 @@ export class ItemImporterApp extends Application {
   getData() {
     return {
       itemTypes: [
-        "ability",
+        "ability (only with cost like (3 Ferocity)",
+        "ability without cost (starting)",
         "malice (not yet implemented)",
         "feature (not yet implemented)",
         "equipment (not yet implemented)",
@@ -27,12 +36,6 @@ export class ItemImporterApp extends Application {
 
   activateListeners(html) {
     console.log("ItemImporterApp listeners activated");
-
-    html.find("#item-type").on("change", (event) => {
-      const selected = event.target.value;
-      const warning = selected !== "ability" ? "(not yet implemented)" : "";
-      html.find("#type-warning").text(warning);
-    });
 
     html.find("#import-button").on("click", async () => {
       const type = html.find("#item-type").val();
@@ -47,8 +50,8 @@ export class ItemImporterApp extends Application {
       let folderId = null;
 
       if (folderName) {
-        const existingFolder = game.folders.find(f =>
-          f.name === folderName && f.type === "Item"
+        const existingFolder = game.folders.find(
+          f => f.name === folderName && f.type === "Item"
         );
 
         if (existingFolder) {
@@ -71,27 +74,37 @@ export class ItemImporterApp extends Application {
         }
       }
 
-     if (type === "ability") {
+ let parsedItems = [];
+
+console.log(`🧭 Importer routing: selected type = "${type}"`);
+
+if (type === "ability (only with cost like (3 Ferocity)") {
+  console.log("🔧 Using costed ability parser (preprocessRawAbilities + parseMultipleAbilities)");
   const structuredItems = preprocessRawAbilities(rawText);
-  const parsedItems = parseMultipleAbilities(structuredItems);
-
-  for (const parsed of parsedItems) {
-    if (!parsed || !parsed.name) continue;
-    parsed.folder = folderId;
-
-    try {
-      await CONFIG.Item.documentClass.createDocuments([parsed]);
-      ui.notifications.info(`Created ability: ${parsed.name}`);
-    } catch (err) {
-      console.error("Item creation failed:", err);
-      ui.notifications.error(`Error creating item: ${parsed.name}`);
-    }
-  }
-
-  this.close();
+  parsedItems = parseMultipleAbilities(structuredItems);
+} else if (type === "ability without cost (starting)") {
+  console.log("🌀 Using costless ability parser (preprocessStartingAbilities)");
+  parsedItems = preprocessStartingAbilities(rawText);
 } else {
-        ui.notifications.warn(`${type} is not yet implemented.`);
+  console.warn(`⚠️ Unknown item type selected: "${type}"`);
+  ui.notifications.warn(`${type} is not yet implemented.`);
+  return;
+}
+
+      for (const parsed of parsedItems) {
+        if (!parsed || !parsed.name) continue;
+        parsed.folder = folderId;
+
+        try {
+          await CONFIG.Item.documentClass.createDocuments([parsed]);
+          ui.notifications.info(`Created ${type}: ${parsed.name}`);
+        } catch (err) {
+          console.error("Item creation failed:", err);
+          ui.notifications.error(`Error creating item: ${parsed.name}`);
+        }
       }
+
+      this.close();
     });
   }
 }

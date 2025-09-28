@@ -1,8 +1,28 @@
-# Item Importer for Foundryvtt Draw-Steel System
+# Draw Steel Item Importer for Foundryvtt
 
-This is a module for the FoundryVTT to import Draw Steel items from the MCDM core rulebooks.
+
+
+This is a module for the FoundryVTT to import Draw Steel monsters from the MCDM Heroes pdf.
 
 
 
 The Draw Steel System for Foundry Virtual Tabletop is an independent product published under the DRAW STEEL Creator License and is not affiliated with MCDM Productions, LLC. DRAW STEEL © 2024 MCDM Productions, LLC.
+
+
+
+TO INSTALL: Drop the draw-steel-item-importer folder into your modules folder before launching FoundryVTT. After launching the software, in should appear under the "Add-on modules" tab. Launch your draw-steel world. Then, activate the module under "Game Settings" and "Manage Modules".
+
+
+
+When you go to the "Create Item" tab, there should be an "Import Draw Steel Item" button at the bottom of the panel. Click it and follow the instructions. Copy and paste the associate blocks from the Heroes pdf.
+
+
+
+More functionality will be coming in the future, at the moment, only hero abilities can be imported.
+
+PLEASE NOTE: At the moment, only abilities with a cost and without a cost will parse correctly.  I had to split those two up as different dropdown selections, so please choose the correct one.
+
+
+
+
 
