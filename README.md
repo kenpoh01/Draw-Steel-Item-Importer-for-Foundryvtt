@@ -24,5 +24,5 @@ PLEASE NOTE: Starting abilities and cost abilities can be parsed but a separate 
 
 
 
-https://github.com/user-attachments/assets/e1009acb-6e3f-4fb5-805f-f2dac6486c8a
+
 
