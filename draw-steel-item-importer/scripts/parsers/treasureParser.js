@@ -47,7 +47,22 @@ export function preprocessTreasureBlocks(rawText, options = {}) {
 export function parseTreasureBlock(text, { category = null, echelon = 1 } = {}) {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const name = lines[0];
-  const description = lines[1] || "";
+  const knownLabels = [
+  "Keywords:",
+  "Item Prerequisite:",
+  "Project Source:",
+  "Project Roll Characteristic:",
+  "Project Goal:",
+  "Effect:"
+];
+
+const descriptionLines = [];
+for (let i = 1; i < lines.length; i++) {
+  const line = lines[i];
+  if (knownLabels.some(label => line.startsWith(label))) break;
+  descriptionLines.push(line);
+}
+const description = `<em>${descriptionLines.join(" ").trim()}</em>`;
 
   const rawKeywordLine = extractField(lines, "Keywords:");
   const keywords = normalizeTreasureKeywords(rawKeywordLine);
