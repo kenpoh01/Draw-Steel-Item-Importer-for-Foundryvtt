@@ -1,28 +1,48 @@
-<form class="item-importer flexcol">
-  <h2>Import Draw Steel Item</h2>
-  <p>Paste the raw item text below and select its type and destination folder.</p>
+<div class="window-content">
+  <form class="item-importer flexcol">
+    <h2>Import Draw Steel Item</h2>
+    <p>Paste the raw item text below and select its type and destination folder.</p>
 
-  <div class="form-group">
-    <label for="item-type">Item Type</label>
-    <select id="item-type" name="item-type">
-      {{#each itemTypes}}
-        <option value="{{this}}">{{this}}</option>
-      {{/each}}
+    <div class="form-group">
+      <label for="item-type">Item Type</label>
+      <select id="item-type" name="item-type">
+        {{#each itemTypes}}
+          <option value="{{this}}">{{this}}</option>
+        {{/each}}
+      </select>
+    </div>
 
-    </select>
-  </div>
+    <div id="treasure-fields" class="form-group" style="display: none;">
+      <label for="treasure-category">Treasure Category</label>
+      <select id="treasure-category" name="treasure-category">
+        <option value="">None</option>
+        <option value="artifact">Artifact</option>
+        <option value="consumable">Consumable</option>
+        <option value="levelled">Levelled</option>
+        <option value="trinket">Trinket</option>
+      </select>
 
-  <div class="form-group">
-    <label for="folder-name">Folder Name</label>
-    <input type="text" id="folder-name" name="folder-name" placeholder="Optional: Create or use folder" />
-  </div>
+      <label for="treasure-echelon">Echelon</label>
+      <select id="treasure-echelon" name="treasure-echelon">
+        <option value="1">1</option>
+        <option value="2">2</option>
+        <option value="3">3</option>
+        <option value="4">4</option>
+      </select>
+    </div>
 
-  <div class="form-group">
-    <label for="item-text">Raw Text</label>
-    <textarea id="item-text" rows="12" placeholder="Paste ability block here..."></textarea>
-  </div>
+    <div class="form-group">
+      <label for="folder-name">Folder Name</label>
+      <input type="text" id="folder-name" name="folder-name" placeholder="Optional: Create or use folder" />
+    </div>
 
-  <button type="button" class="import-button" id="import-button">
-    <i class="fas fa-plus"></i> Create Item
-  </button>
-</form>
+    <div class="form-group">
+      <label for="item-text">Raw Text</label>
+      <textarea id="item-text" rows="12" placeholder="Paste ability block here..."></textarea>
+    </div>
+
+    <button type="button" class="import-button" id="import-button">
+      <i class="fas fa-plus"></i> Create Item
+    </button>
+  </form>
+</div>

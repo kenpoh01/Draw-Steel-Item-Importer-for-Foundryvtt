@@ -6,6 +6,7 @@ import {
   preprocessStartingAbilities
 } from "./parsers/startingAbilityParser.js";
 
+import { preprocessTreasureBlocks } from "./parsers/treasureParser.js";
   
 
 export class ItemImporterApp extends Application {
@@ -26,21 +27,47 @@ export class ItemImporterApp extends Application {
       itemTypes: [
         "ability (only with cost like (3 Ferocity)",
         "ability without cost (starting)",
-        "malice (not yet implemented)",
+        "complication (not yet implemented)",
+        "culture (not yet implemented)",
         "feature (not yet implemented)",
-        "equipment (not yet implemented)",
-        "power (not yet implemented)"
+        "perk (not yet implemented)",
+        "project (not yet implemented)",
+        "title (not yet implemented)",
+        "treasure"
       ]
     };
   }
 
-  activateListeners(html) {
-    console.log("ItemImporterApp listeners activated");
+activateListeners(html) {
+  console.log("ItemImporterApp listeners activated");
 
-    html.find("#import-button").on("click", async () => {
-      const type = html.find("#item-type").val();
-      const rawText = html.find("#item-text").val()?.trim();
-      const folderName = html.find("#folder-name").val()?.trim();
+  const itemTypeSelect = html.find("#item-type");
+  const treasureFields = html.find("#treasure-fields");
+
+  if (itemTypeSelect.length && treasureFields.length) {
+    itemTypeSelect.on("change", event => {
+      const selected = event.target.value;
+      treasureFields.toggle(selected === "treasure");
+    });
+
+    // Trigger once on initial render
+    treasureFields.toggle(itemTypeSelect.val() === "treasure");
+  } else {
+    console.warn("⚠️ Treasure fields or item type selector not found in DOM.");
+  }
+
+  html.find("#import-button").on("click", async () => {
+    const type = itemTypeSelect.val();
+    const rawText = html.find("#item-text").val()?.trim();
+    const folderName = html.find("#folder-name").val()?.trim();
+
+    const category = type === "treasure"
+      ? html.find("#treasure-category").val() || null
+      : null;
+
+    const echelon = type === "treasure"
+      ? parseInt(html.find("#treasure-echelon").val(), 10)
+      : null;
 
       if (!type || !rawText) {
         ui.notifications.warn("Please select an item type and paste item text.");
@@ -74,22 +101,24 @@ export class ItemImporterApp extends Application {
         }
       }
 
- let parsedItems = [];
+      let parsedItems = [];
 
-console.log(`🧭 Importer routing: selected type = "${type}"`);
+      console.log(`🧭 Importer routing: selected type = "${type}"`);
 
-if (type === "ability (only with cost like (3 Ferocity)") {
-  console.log("🔧 Using costed ability parser (preprocessRawAbilities + parseMultipleAbilities)");
-  const structuredItems = preprocessRawAbilities(rawText);
-  parsedItems = parseMultipleAbilities(structuredItems);
-} else if (type === "ability without cost (starting)") {
-  console.log("🌀 Using costless ability parser (preprocessStartingAbilities)");
-  parsedItems = preprocessStartingAbilities(rawText);
-} else {
-  console.warn(`⚠️ Unknown item type selected: "${type}"`);
-  ui.notifications.warn(`${type} is not yet implemented.`);
-  return;
-}
+      if (type === "ability (only with cost like (3 Ferocity)") {
+        console.log("🔧 Using costed ability parser");
+        const structuredItems = preprocessRawAbilities(rawText);
+        parsedItems = parseMultipleAbilities(structuredItems);
+      } else if (type === "ability without cost (starting)") {
+        console.log("🌀 Using costless ability parser");
+        parsedItems = preprocessStartingAbilities(rawText);
+      } else if (type === "treasure") {
+        parsedItems = preprocessTreasureBlocks(rawText, { category, echelon });
+      } else {
+        console.warn(`⚠️ Unknown item type selected: "${type}"`);
+        ui.notifications.warn(`${type} is not yet implemented.`);
+        return;
+      }
 
       for (const parsed of parsedItems) {
         if (!parsed || !parsed.name) continue;
@@ -107,7 +136,7 @@ if (type === "ability (only with cost like (3 Ferocity)") {
       this.close();
     });
   }
-}
+} // ✅ Make sure this closes the class
 
 // 🔗 Hook to inject the importer button into the Item Directory
 Hooks.on("renderItemDirectory", (app, html, data) => {

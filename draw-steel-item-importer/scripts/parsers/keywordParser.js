@@ -11,6 +11,21 @@ export const KNOWN_KEYWORDS = [
   "telekinesis", "telepathy", "void", "weapon"
 ];
 
+/** Treasure-specific slot keywords */
+export const TREASURE_KEYWORDS = ["feet", "hands", "neck", "ring"];
+
+/** Merged keyword set for treasure parsing */
+const ALL_TREASURE_KEYWORDS = [...KNOWN_KEYWORDS, ...TREASURE_KEYWORDS];
+
+/** Normalizes treasure keywords from a header string */
+export function normalizeTreasureKeywords(header = "") {
+  return header
+    .toLowerCase()
+    .split(/[,;]/)
+    .map(k => k.trim())
+    .filter(k => ALL_TREASURE_KEYWORDS.includes(k));
+}
+
 /** Valid heroic resource types */
 export const HEROIC_RESOURCE_TYPES = [
   "wrath", "ferocity", "focus", "insight", "piety",
@@ -81,9 +96,12 @@ export function normalizeKeywords(header = "") {
     ? header.replace(new RegExp(`${matchedType}$`, "i"), "").trim()
     : header;
 
-  const rawKeywords = keywordPart.split(/[,;]/).map(k => k.trim().toLowerCase()).filter(Boolean);
-  const keywords = rawKeywords.filter(k => KNOWN_KEYWORDS.includes(k));
+  const rawKeywords = keywordPart
+    .split(/[,;]/)
+    .map(k => k.trim().toLowerCase())
+    .filter(Boolean);
 
+  const keywords = rawKeywords.filter(k => KNOWN_KEYWORDS.includes(k));
   const conditions = detectConditions(header);
 
   return { keywords, type, conditions };
