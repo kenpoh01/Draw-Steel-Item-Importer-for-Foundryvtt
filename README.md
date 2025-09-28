@@ -20,7 +20,7 @@ When you go to the "Create Item" tab, there should be an "Import Draw Steel Item
 
 More functionality will be coming in the future, at the moment, only hero abilities can be imported.
 
-PLEASE NOTE: At the moment, only abilities with a cost will parse correctly.  I'm working on being able to parse starting abilities.
+PLEASE NOTE: Starting abilities and cost abilities can be parsed but a separate dropdown selection must be made for both.  Treasures can now also be parsed.
 
 
 
