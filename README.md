@@ -26,3 +26,11 @@ PLEASE NOTE: Starting abilities and cost abilities can be parsed but a separate 
 
 
 
+https://github.com/user-attachments/assets/e7086161-1890-4c49-81ba-cfbc17152c74
+
+
+
+
+https://github.com/user-attachments/assets/bf83e58b-2fac-4935-9255-39e549f2a7b6
+
+
