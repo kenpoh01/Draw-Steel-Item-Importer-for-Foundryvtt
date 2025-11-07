@@ -119,7 +119,6 @@ const effectText = nonTierLines.join(" ");
         rollCharacteristic,
         goal: isFinite(goal) ? goal : 0
       },
-      _dsid: name.toLowerCase().replace(/\s+/g, "-"),
       effect: {
         before: "",
         after: ""

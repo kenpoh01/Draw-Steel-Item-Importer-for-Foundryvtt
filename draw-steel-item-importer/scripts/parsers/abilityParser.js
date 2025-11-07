@@ -95,7 +95,6 @@ export function parseAbility(raw) {
     type: "ability",
     img: icon,
     system: {
-      _dsid: generateDSID(name),
       story,
       keywords,
       type,

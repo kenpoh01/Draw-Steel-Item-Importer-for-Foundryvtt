@@ -179,7 +179,6 @@ export function preprocessStartingAbilities(rawText = "") {
       type: "ability",
       img: icon,
       system: {
-        _dsid: raw.name.toLowerCase().replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-"),
         story: raw.story.trim(),
         keywords,
         type,

@@ -1,25 +1,37 @@
 // effectTableBuilder.js
 import { enrichNarrative } from "./narrativeUtils.js";
-import { parseDuration } from "./durationParser.js";
 
-
+// Optional: if you ever re-enable duration parsing
+// import { parseDuration } from "./durationParser.js";
 
 function convertTierLabel(tierChar) {
   switch (tierChar) {
-    case "á": case "1": return "11 or less";
-    case "é": case "2": return "12–16";
-    case "í": case "3": return "17+";
-    default: return tierChar;
+    case "á":
+    case "1":
+      return "11 or less";
+    case "é":
+    case "2":
+      return "12–16";
+    case "í":
+    case "3":
+      return "17+";
+    default:
+      return tierChar;
   }
 }
 
 export function finalizeEffectTable(item, tierLines) {
   if (!tierLines.length) return;
 
-  let table = `<table><tbody>`;
-  const activeEffects = [];
+  const glyphMap = {
+    "á": "!",
+    "1": "!",
+    "é": "@",
+    "2": "@",
+    "í": "#",
+    "3": "#"
+  };
 
-  // Group multiline tier blocks
   const grouped = [];
   let currentTier = null;
   let currentText = [];
@@ -40,7 +52,8 @@ export function finalizeEffectTable(item, tierLines) {
     grouped.push({ tier: currentTier, text: currentText.join(" ") });
   }
 
-  // Render table and enrich effects
+  let html = `<dl class="power-roll-display">`;
+
   grouped.forEach(({ tier, text }) => {
     let rawText = text;
     let effectText = "";
@@ -52,46 +65,28 @@ export function finalizeEffectTable(item, tierLines) {
     }
 
     const enriched = enrichNarrative(rawText);
-    const label = convertTierLabel(tier);
+    const glyph = glyphMap[tier] || tier;
+    const cssClass =
+      glyph === "!" ? "tier1" :
+      glyph === "@" ? "tier2" :
+      glyph === "#" ? "tier3" :
+      "tierX";
 
-    table += `<tr><td data-colwidth="98"><p>${label}</p></td><td><p>${enriched}</p></td></tr>`;
+    html += `
+      <dt class="${cssClass}">
+        <p>${glyph}</p>
+      </dt>
+      <dd>
+        <p>${enrichNarrative(rawText)}</p>
+      </dd>`;
 
     if (effectText) {
       item.system.effect.after += `<p>${enrichNarrative(effectText)}</p>`;
     }
 
-    const conditionMatch = enriched.match(/\b(weakened|restrained|frightened|bleeding|slowed|taunted|dazed)\b/i);
-    if (conditionMatch) {
-      const durationData = parseDuration(enriched);
-
-      activeEffects.push({
-        name: conditionMatch[1].charAt(0).toUpperCase() + conditionMatch[1].slice(1),
-        img: "icons/svg/downgrade.svg",
-        origin: null,
-        transfer: false,
-        type: "base",
-        system: {
-          end: { type: durationData.end, roll: durationData.roll }
-        },
-        changes: [],
-        disabled: false,
-        duration: { rounds: durationData.rounds },
-        description: "",
-        tint: "#ffffff",
-        statuses: [conditionMatch[1].toLowerCase()],
-        sort: 0,
-        flags: {},
-        _stats: {
-          coreVersion: "13.347",
-          systemId: "draw-steel",
-          systemVersion: "0.8.0",
-          lastModifiedBy: null
-        }
-      });
-    }
+    // Effect schema generation has been removed per module creator request
   });
 
-  table += `</tbody></table>`;
-  item.system.effect.before += table;
-  item.effects.push(...activeEffects);
+  html += `</dl>`;
+  item.system.effect.before += html;
 }
