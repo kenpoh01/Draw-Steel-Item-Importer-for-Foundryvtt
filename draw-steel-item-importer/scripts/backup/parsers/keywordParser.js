@@ -17,15 +17,6 @@ export const TREASURE_KEYWORDS = ["feet", "hands", "neck", "ring"];
 /** Merged keyword set for treasure parsing */
 const ALL_TREASURE_KEYWORDS = [...KNOWN_KEYWORDS, ...TREASURE_KEYWORDS];
 
-export const LEVELED_KEYWORDS = { 
-	armor: ["none", "light", "medium", "heavy", "shield"], 
-	weapon: ["none", "bow", "ensnaring", "heavy", "light", "medium", "polearm", "unarmed", "whip"], 
-	implement: ["implement", "orb", "wand"], 
-	other: ["hands", "feet", "arms", "head", "neck", "ring", "waist"] 
-	};
-
-export const UNIVERSAL_KEYWORDS = ["magic", "psionic"];
-
 /** Normalizes treasure keywords from a header string */
 export function normalizeTreasureKeywords(header = "") {
   return header

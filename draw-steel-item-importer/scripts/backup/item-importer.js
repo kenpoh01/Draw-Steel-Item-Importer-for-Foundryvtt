@@ -1,17 +1,13 @@
 import {
-  parseMultipleAbilities,
-  preprocessRawAbilities
-} from "./parsers/abilityParser.js";
-
-import { preprocessStartingAbilities } from "./parsers/startingAbilityParser.js";
+  parseMultipleAbilities,  preprocessRawAbilities, 
+  } from "./parsers/abilityParser.js";
+  
+import {
+  preprocessStartingAbilities
+} from "./parsers/startingAbilityParser.js";
 
 import { preprocessTreasureBlocks } from "./parsers/treasureParser.js";
-
-import {
-  parseLeveledTreasureBlock,
-  parseMultipleLeveledTreasures
-} from "./parsers/leveledTreasureParser.js";
-
+  
 
 export class ItemImporterApp extends Application {
   static get defaultOptions() {
@@ -42,54 +38,36 @@ export class ItemImporterApp extends Application {
     };
   }
 
-  activateListeners(html) {
-    console.log("ItemImporterApp listeners activated");
+activateListeners(html) {
+  console.log("ItemImporterApp listeners activated");
 
-    const itemTypeSelect = html.find("#item-type");
-    const treasureFields = html.find("#treasure-fields");
-    const treasureCategorySelect = html.find("#treasure-category");
-    const treasureEchelon = html.find("#treasure-echelon");
-    const leveledSubtype = html.find("#leveled-subtype");
+  const itemTypeSelect = html.find("#item-type");
+  const treasureFields = html.find("#treasure-fields");
 
-    if (itemTypeSelect.length && treasureFields.length) {
-      itemTypeSelect.on("change", event => {
-        const selected = event.target.value;
-        treasureFields.toggle(selected === "treasure");
-      });
+  if (itemTypeSelect.length && treasureFields.length) {
+    itemTypeSelect.on("change", event => {
+      const selected = event.target.value;
+      treasureFields.toggle(selected === "treasure");
+    });
 
-      treasureFields.toggle(itemTypeSelect.val() === "treasure");
-    } else {
-      console.warn("⚠️ Treasure fields or item type selector not found in DOM.");
-    }
+    // Trigger once on initial render
+    treasureFields.toggle(itemTypeSelect.val() === "treasure");
+  } else {
+    console.warn("⚠️ Treasure fields or item type selector not found in DOM.");
+  }
 
-    if (treasureCategorySelect.length && treasureEchelon.length && leveledSubtype.length) {
-      treasureCategorySelect.on("change", event => {
-        const selected = event.target.value;
-        treasureEchelon.toggle(selected !== "leveled");
-        leveledSubtype.toggle(selected === "leveled");
-      });
+  html.find("#import-button").on("click", async () => {
+    const type = itemTypeSelect.val();
+    const rawText = html.find("#item-text").val()?.trim();
+    const folderName = html.find("#folder-name").val()?.trim();
 
-      const initialCategory = treasureCategorySelect.val();
-      treasureEchelon.toggle(initialCategory !== "leveled");
-      leveledSubtype.toggle(initialCategory === "leveled");
-    }
+    const category = type === "treasure"
+      ? html.find("#treasure-category").val() || null
+      : null;
 
-    html.find("#import-button").on("click", async () => {
-      const type = itemTypeSelect.val();
-      const rawText = html.find("#item-text").val()?.trim();
-      const folderName = html.find("#folder-name").val()?.trim();
-
-      const category = type === "treasure"
-        ? treasureCategorySelect.val() || null
-        : null;
-
-      const echelon = type === "treasure" && category !== "leveled"
-        ? parseInt(treasureEchelon.val(), 10)
-        : null;
-
-      const leveledType = type === "treasure" && category === "leveled"
-        ? html.find("#leveled-type").val() || null
-        : null;
+    const echelon = type === "treasure"
+      ? parseInt(html.find("#treasure-echelon").val(), 10)
+      : null;
 
       if (!type || !rawText) {
         ui.notifications.warn("Please select an item type and paste item text.");
@@ -135,11 +113,7 @@ export class ItemImporterApp extends Application {
         console.log("🌀 Using costless ability parser");
         parsedItems = preprocessStartingAbilities(rawText);
       } else if (type === "treasure") {
-        if (category === "leveled") {
-          parsedItems = parseMultipleLeveledTreasures(rawText, { leveledType, echelon });
-        } else {
-          parsedItems = preprocessTreasureBlocks(rawText, { category, echelon });
-        }
+        parsedItems = preprocessTreasureBlocks(rawText, { category, echelon });
       } else {
         console.warn(`⚠️ Unknown item type selected: "${type}"`);
         ui.notifications.warn(`${type} is not yet implemented.`);
@@ -162,8 +136,9 @@ export class ItemImporterApp extends Application {
       this.close();
     });
   }
-}
+} // ✅ Make sure this closes the class
 
+// 🔗 Hook to inject the importer button into the Item Directory
 Hooks.on("renderItemDirectory", (app, html, data) => {
   const $html = $(html);
   const button = $(`

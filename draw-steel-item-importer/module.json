@@ -1,29 +1,30 @@
 {
   "id": "draw-steel-item-importer",
   "title": "Draw Steel Item Importer",
-  "description": "Adds a UI-based importer for Draw Steel item creation via text input.",
+  "description": "<p>Adds a UI-based importer for Draw Steel item creation via text input.</p>",
   "version": "1.0.0",
-  "author": "Ivan & Copilot",
   "compatibility": {
     "minimum": "13",
     "verified": "13"
   },
-  "systems": ["draw-steel"],
   "esmodules": [
     "scripts/item-importer.js"
   ],
   "styles": [
-    "styles/importer.css"
+    {
+      "src": "styles/importer.css"
+    }
   ],
   "languages": [
     {
       "lang": "en",
       "name": "English",
-      "path": "lang/en.json"
+      "path": "lang/en.json",
+      "flags": {}
     }
   ],
-  "packs": [],
-  "url": "https://your-host-url.com",
+  "url": "https://github.com/kenpoh01/Draw-Steel-Item-Importer-for-Foundryvtt/blob/main/draw-steel-item-importer/",
   "manifest": "https://your-host-url.com/module.json",
-  "download": "https://your-host-url.com/module.zip"
+  "download": "https://your-host-url.com/module.zip",
+  "flags": {}
 }
