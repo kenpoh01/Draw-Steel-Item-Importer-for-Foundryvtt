@@ -18,11 +18,5 @@ When you go to the "Create Item" tab, there should be an "Import Draw Steel Item
 
 
 
-More functionality will be coming in the future, at the moment, only hero abilities can be imported.
-
-PLEASE NOTE: At the moment, only abilities with a cost and without a cost will parse correctly.  I had to split those two up as different dropdown selections, so please choose the correct one.
-
-
-
-
+More functionality will be coming in the future (please see the dropdown menu for which are active)
 
