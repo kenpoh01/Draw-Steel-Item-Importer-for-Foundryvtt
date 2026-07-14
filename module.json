@@ -23,8 +23,8 @@
       "flags": {}
     }
   ],
-  "url": "https://github.com/kenpoh01/Draw-Steel-Item-Importer-for-Foundryvtt/",
-  "manifest": "https://raw.githubusercontent.com/kenpoh01/Draw-Steel-Item-Importer-for-Foundryvtt/main/draw-steel-item-importer/module.json",
+  "url": "https://github.com/kenpoh01/draw-steel-item-importer/",
+  "manifest": "https://raw.githubusercontent.com/kenpoh01/draw-steel-item-importer/main/draw-steel-item-importer/module.json",
   "download": "https://github.com/kenpoh01/draw-steel-item-importer/releases/download/v.1.0.5/module.zip",
   "flags": {}
 }
